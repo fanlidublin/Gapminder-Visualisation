@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" class="tas-com">
+
+<head>
+    <meta charset="utf-8">
+    <title>Channelling Hans (Fan Li 16212155)</title>
+    <link href="./themes/prism.css" rel="stylesheet" />
+    <link href="./themes/tas_style.css" rel="stylesheet" />
+    <script type="text/javascript" src="./d3/d3.v4.js" charset="utf-8"></script>
+    <script src="./lib/prism.js" charset="utf-8"></script>
+    <link href="https://fonts.googleapis.com/css?family=Spectral+SC|Titillium+Web|Fjalla+One" rel="stylesheet">
+    <link href="./themes/myCss.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+    <div class="infovis">
+        <div class="left-part">
+            <font style="font-family: Spectral SC; font-size: 100"><i><b>Assignment2 (Gapminder-World)</b></i></font>
+            <br>
+            <font style="font-family: Spectral SC;"><i>Fan Li(16212155)</i></font>
+            <!-- Gapminder World Main Screen -->
+            <div id="fanli1" class="main">
+                <script type="text/javascript">
+                // Define tooltip, which will be used to display countries' name
+                // Inspiration comes from this example: http://bl.ocks.org/d3noob/a22c42db65eb00d4e369
+                var tooltip = d3.select("body")
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
+
+                //Define margins
+                var margin = { top: 10, right: 10, bottom: 50, left: 60 }
+                var margin2 = { top: 10, right: 10, bottom: 90, left: 140 }
+                var margin3 = { top: 10, right: 10, bottom: 90., left: 140 }
+
+                //Width and height for Gapminder World
+                var outer_width = 900;
+                var outer_height = 600;
+                var svg_width = outer_width - margin.left - margin.right;
+                var svg_height = outer_height - margin.top - margin.bottom;
+
+                //Width and height for barchart
+                var outer_width2 = 450;
+                var outer_height2 = 335;
+                var svg_width2 = outer_width2 - margin2.left - margin2.right;
+                var svg_height2 = outer_height2 - margin2.top - margin2.bottom;
+
+                var outer_width3 = 450;
+                var outer_height3 = 335;
+                var svg_width3 = outer_width3 - margin3.left - margin3.right;
+                var svg_height3 = outer_height3 - margin3.top - margin3.bottom;
+
+                // Global variablies
+                var dataset, display_year, min_year, max_year;
+                var continentSelect = '';
+                var time;
+                var index = 0;
+                var countries_perRegion = {};
+                var countries_perGovernment = {};
+                var selectedCountry;
+                var circle;
+
+                //Create SVG elements
+                var svg = d3.select("#fanli1")
+                    .append("svg")
+                    // .style("background", "aliceblue")
+                    .attr("width", outer_width)
+                    .attr("height", outer_height)
+                    .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                // Color used in each continent, idea from: https://bost.ocks.org/mike/constancy/#key-functions, to use "key functions" mapping region with color.
+                regions = {
+                    "Asia": "#FF4040",
+                    "Europe": "#FFEB3B",
+                    "Africa": "#29B6F6",
+                    "North America": "#2ECC71",
+                    "South America": "#2ECC71",
+                    "Oceania": "#FF4040",
+                    "Central America": "#2ECC71",
+                    "Australia": "#FF4040"
+                };
+
+                // An alternative way, color used in each continent
+                // var fill = d3.scaleOrdinal()
+                //     .domain(["Asia", "Australia", 'Oceania', "Europe", "Africa", "North America", "South America", "Central America"])
+                //     .range(["#FF4040", "#FF4040", "#FF4040", "#FFEB3B", "#29B6F6", "#2ECC71", "#2ECC71", "#2ECC71"]);
+
+                governments = {
+                    "islamic republic": "1",
+                    "republic": "2",
+                    "monarchy": "3",
+                    "external territory": "4",
+                    "federal republic": "5",
+                    "absolute monarchy": "6",
+                    "people's republic": "7",
+                    "socialist republic": "8",
+                    "parliamentary federal republic": "9"
+                };
+
+                // Load the csv file and generate visualisations based on it
+                // Test -- Gapminder_Small.csv
+                // Final -- Gapminder_All_Time.csv
+                d3.csv("./data/Gapminder_All_Time.csv", function(error, data) {
+                    // handle any data loading errors
+                    if (error) {
+                        console.log("Something went wrong");
+                        console.log(error);
+                    } else {
+                        console.log("Data Loaded");
+                        // Assign  the data object loaded to the global dataset variable
+                        dataset = data;
+                        year_list = d3.map(dataset, function(d) { return +d.Year; }).keys();
+                        min_year = d3.min(dataset.map(function(d) { return +d.Year; }));
+                        display_year = min_year;
+                        // Generate the visualisation
+                        generateAxes();
+                        generateVis();
+                        generateBar1();
+                        generateBar2();
+                    }
+                });
+
+                // Function to filter year
+                function yearFilter(value) {
+                    return (value.Year == display_year);
+                }
+
+                // Functions to filter selected continent and display
+                function continentFilter(value) {
+                    if (continentSelect == '')
+                        return value;
+                    else
+                        s = value.Region;
+                    return (s.includes(continentSelect));
+                }
+
+                function continent(value) {
+                    continentSelect = value;
+                    generateVis();
+                }
+
+                // Function to filter selected Country
+                function counrtyFilter(value) {
+                    return (value.Country == selectedCountry);
+                }
+
+                // Event controller corresponding to start button
+                function start() {
+                    time = setInterval(function() {
+                        index = index + 1;
+                        if (index >= year_list.length) {
+                            index = 0;
+                        }
+                        display_year = year_list[index];
+                        document.getElementById("sliderBarYear").value = display_year;
+                        generateVis();
+                        generateBar1();
+                        generateBar2();
+                    }, 600);
+                }
+
+                // Event controller corresponding to stop button
+                function stop() {
+                    document.getElementById("sliderBarYear").value = display_year;
+                    clearInterval(time);
+                }
+
+                // Event controller corresponding to reset button
+                function reset() {
+                    index = 0;
+                    display_year = 1900;
+                    continentSelect = '';
+                    clearInterval(time);
+                    generateVis();
+                    generateBar1();
+                    generateBar2();
+                    sliderWorks(display_year);
+                    document.getElementById("sliderBarYear").value = 1900;
+                    selectedCountry = null;
+                }
+
+                // Funtion related to the slider bar
+                function sliderWorks(year) {
+                    display_year = year;
+                    generateVis();
+                    generateBar1();
+                    generateBar2();
+                    clearInterval(time);
+                }
+                // Function related to draw the journey of a selected country
+                function drawJourney() {
+                    var journey = svg;
+                    var filtered_dataset = dataset.filter(function(d) {
+                        if (selectedCountry != null) {
+                            return display_year >= +d.Year && d.Country == selectedCountry;
+                        } else {
+                            return false;
+                        }
+                    })
+
+                    for (var i = 0; i < filtered_dataset.length; i++) {
+                        journey.append("circle")
+                            .attr("id", "journey")
+                            .attr("cx", xScale(+filtered_dataset[i].GDP))
+                            .attr("cy", yScale(+filtered_dataset[i].LifeExp))
+                            .attr("r", rScale(+filtered_dataset[i].Population))
+                            .style("stroke", "black")
+                            .style("stroke-width", 1)
+                            .style("opacity", 1)
+                            .attr("fill", regions[filtered_dataset[i].Region]);
+                    }
+                }
+
+                // Function related to generate x and y axis and corresponding text
+                function generateAxes() {
+                    // Instead of a fixed domain we could calculate this from the dataset
+                    xScale = d3.scaleLog()
+                        .domain(d3.extent(dataset, function(d) { return +d.GDP }))
+                        // .domain([d3.min(data, function(d) { return +d.GDP }), d3.max(data, function(d) { return +d.GDP })])
+                        .range([0, svg_width]);
+
+                    // Create a scale object to nicely take care of positioning circles along the horizontal axis
+                    yScale = d3.scaleLinear()
+                        .domain(d3.extent(dataset, function(d) { return +d.LifeExp }))
+                        // .domain([d3.min(data, function(d) { return +d.LifeExp }), d3.max(data, function(d) { return +d.LifeExp })])
+                        .range([svg_height, 0]);
+
+                    rScale = d3.scaleSqrt()
+                        .domain(d3.extent(dataset, function(d) { return +d.Population }))
+                        // .domain([d3.min(data, function(d) { return +d.Population }), d3.max(data, function(d) { return +d.Population })])
+                        .range([2, 45]);
+
+                    var xAxis = d3.axisBottom()
+                        .scale(xScale)
+                        .ticks(13, d3.format(",d"));
+
+                    var yAxis = d3.axisLeft()
+                        .scale(yScale);
+
+                    // Append x axis
+                    svg.append("g")
+                        .attr("class", "x-axis")
+                        .attr("transform", "translate(0," + svg_height + ")")
+                        .call(xAxis);
+
+                    // Append y axis
+                    svg.append("g")
+                        .attr("class", "y-axis")
+                        .call(yAxis);
+
+                    // Text label for the x axis
+                    svg.append("text")
+                        .attr("x", 300)
+                        .attr("y", svg_height + margin.bottom - 10)
+                        .attr("font-family", "Spectral SC")
+                        .style("font-size", "20px")
+                        .text("Income per person");
+
+                    // Text label for the x axis
+                    svg.append("text")
+                        .attr("x", 500)
+                        .attr("y", svg_height + margin.bottom - 8)
+                        .style("font-size", "15px")
+                        .style("font-style", "italic")
+                        .text("in US Dollars");
+
+                    //Text label for y-axis
+                    svg.append("text")
+                        .attr("x", 0 - (svg_height / 2))
+                        .attr("y", -40)
+                        .attr("transform", "rotate(-90)")
+                        .style("font-family", "Spectral SC")
+                        .style("font-size", "20px")
+                        .style("text-anchor", "middle")
+                        .text("Life expectancy");
+
+                    //Text label for y-axis
+                    svg.append("text")
+                        .attr("x", 0 - (svg_height / 2))
+                        .attr("y", -25)
+                        .attr("transform", "rotate(-90)")
+                        .style("font-size", "15px")
+                        .style("font-style", "italic")
+                        .text("in years");
+
+                    //Initialization of display_year text floating in the graph
+                    svg.append("text")
+                        .attr("x", svg_width / 2)
+                        .attr("y", svg_height / 1.5)
+                        .style("text-anchor", "middle")
+                        .attr("id", "year")
+                        .attr("class", "year")
+                        .attr("opacity", 0.5)
+                        .text(display_year);
+                }
+
+                // Define a function to draw the main screen of Gapminder World
+                function generateVis() {
+                    // Filter data by year
+                    var filtered_dataset = dataset.filter(yearFilter);
+                    // Filter data by continent
+                    var filtered_dataset = filtered_dataset.filter(continentFilter);
+                    // Realted to drawJourney() function
+                    d3.selectAll("#journey").remove();
+
+                    /************ perform data join ************/
+                    var circles = svg.selectAll('circle')
+                        .data(filtered_dataset, function key(d) {
+                            return d.Country;
+                        });
+
+                    circles.transition()
+                        .duration(400)
+                        .ease(d3.easeLinear)
+                        .attr("cx", function(d) {
+                            return xScale(+d.GDP);
+                        })
+                        .attr("cy", function(d) {
+                            return yScale(+d.LifeExp);
+                        })
+                        .attr("r", function(d) {
+                            return rScale(+d.Population);
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        // To handle clicked country can have distinguish opacity with others
+                        .style("opacity", function(d) {
+                            if (d.Country == selectedCountry || selectedCountry == null) {
+                                return 1;
+                            } else {
+                                return 0.2;
+                            }
+                        })
+                        .attr("fill", function(d) {
+                            return regions[d.Region];
+                        });
+
+                    /************ handle enter selection ************/
+                    circles.enter()
+                        .append("circle")
+                        .attr("class", "circle")
+                        .attr("cx", function(d) {
+                            return xScale(+d.GDP);
+                        })
+                        .attr("cy", function(d) {
+                            return yScale(+d.LifeExp);
+                        })
+                        .attr("r", function(d) {
+                            return rScale(+d.Population);
+                        })
+                        .style("stroke", "black")
+                        .style("stroke-width", 1)
+                        .style("opacity", 1)
+                        .attr("fill", function(d) {
+                            return regions[d.Region];
+                        })
+                        // Design mouse event to pop up countries' name
+                        // Inspiration comes from this example: http://bl.ocks.org/d3noob/a22c42db65eb00d4e369
+                        .on("mouseover", function(d) {
+                            tooltip.transition()
+                                .duration(200)
+                                .style("opacity", 0.8);
+                            tooltip.html(d.Country + "<br/>" + display_year)
+                                .style("left", (d3.event.pageX) + "px")
+                                .style("top", (d3.event.pageY) + "px");
+                        })
+                        .on("mouseout", function(d) {
+                            tooltip.transition()
+                                .duration(200)
+                                .style("opacity", 0);
+                        })
+                        .on("click", function(d) {
+                            selectedCountry = d.Country;
+                            d3.selectAll('.circle')
+                                .filter(function(d) { return selectedCountry != d.Country; })
+                                .transition()
+                                .style("opacity", 0.2);
+                        })
+                    //Text label for Year in background
+                    svg.select("#year")
+                        .attr("x", svg_width / 2)
+                        .attr("y", svg_height / 1.5)
+                        .style("text-anchor", "middle")
+                        .attr("class", "year")
+                        .text(display_year);
+
+                    /************ handle exit selection ************/
+                    circles.exit()
+                        .remove();
+
+                    // Perform drawing selected counrty's journey
+                    drawJourney();
+                }
+                </script>
+            </div>
+        </div>
+        <!-- Bar Chart -->
+        <div class="barcharts">
+            <div id="fanli2" class="subBar1">
+                <script type="text/javascript">
+                var svg2 = d3.select("#fanli2")
+                    .append("svg")
+                    // .style("background", "aliceblue")
+                    .attr("width", outer_width2)
+                    .attr("height", outer_height2 + 8)
+                    .append("g")
+                    .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+                // here used the fixed domain
+                var xScale2 = d3.scaleLinear()
+                    .domain([0, 51])
+                    .range([0, 300]);
+                // Create a scale object to nicely take care of positioning bars along the horizontal axis
+                var yScale2 = d3.scaleBand()
+                    .range([0, 300])
+                    .paddingInner(0.2)
+                    .paddingOuter(0.5);
+
+                var xAxis2 = d3.axisBottom()
+                    .ticks(10)
+                    .scale(xScale2);
+
+                var yAxis2 = d3.axisLeft()
+                    .scale(yScale2);
+                // Append x axis for this bar chart
+                svg2.append("g")
+                    .attr("class", "axis2")
+                    .attr("id", "x-axis2")
+                    .attr("transform", "translate(0," + (svg_height2 + 65) + ")")
+                    .call(xAxis2);
+                // Append y axis for this bar chart
+                svg2.append("g")
+                    .attr("class", "axis2")
+                    .attr("id", "y-axis2");
+                // Append title for this bar chart
+                svg2.append("text")
+                    .attr("x", 15)
+                    .attr("y", svg_height2 + 95)
+                    .style("font-size", "15px")
+                    .style("font-style", "italic")
+                    .text("BarChar1: number of countries per region");
+
+                // Define a fucntion to draw the bar chart
+                function generateBar1() {
+                    // Filter data by year
+                    var filtered_dataset = dataset.filter(yearFilter);
+                    // Filter data by region and then get the number of countries in each region by iteration
+                    var region_list = Object.keys(regions);
+                    for (var i = 0; i < region_list.length; i++) {
+                        countries_perRegion[region_list[i]] = filtered_dataset.filter(function(d) {
+                            return d.Region == region_list[i]
+                        }).length;
+                    }
+                    // Update the domain of the y scale
+                    yScale2.domain(filtered_dataset.map(function(d) { return d.Region; }));
+                    // Call the y-axis2
+                    svg2.select("#y-axis2").call(yAxis2);
+
+                    /************ perform data join ************/
+                    var bars = svg2.selectAll('rect')
+                        .data(filtered_dataset, function key(d) {
+                            return d.Region;
+                        });
+
+                    /************ handle update selection ************/
+                    bars
+                        .transition()
+                        .duration(600)
+                        .ease(d3.easeBounce)
+                        .attr("x", 0)
+                        .attr("y", function(d) {
+                            return yScale2(d.Region);
+                        })
+                        .attr("height", yScale2.bandwidth())
+                        .attr("width", function(d) {
+                            return xScale2(countries_perRegion[d.Region]);
+                        })
+                        .attr("fill", "Green");
+
+                    /************ handle enter selection ************/
+                    bars.enter()
+                        .append("rect")
+                        .attr("x", 0)
+                        .attr("y", function(d, i) {
+                            return yScale2(d.Region);
+                        })
+                        .attr("height", yScale2.bandwidth())
+                        .attr("width", function(d) {
+                            return xScale2(countries_perRegion[d.Region]);
+                        })
+                        .attr("fill", "Green");
+
+                    /************ handle exit selection ************/
+                    bars.exit()
+                        .remove();
+                }
+                </script>
+            </div>
+            <div id="fanli3" class="subBar2">
+                <script type="text/javascript">
+                var svg3 = d3.select("#fanli3")
+                    .append("svg")
+                    // .style("background", "aliceblue")
+                    .attr("width", outer_width3)
+                    .attr("height", outer_height3 + 8)
+                    .append("g")
+                    .attr("transform", "translate(" + margin3.left + "," + margin3.top + ")");
+                // Create a scale with fixed domain
+                var xScale3 = d3.scaleLinear()
+                    .domain([0, 121])
+                    .range([0, 300]);
+                // Create a scale object to nicely take care of positioning bars along the horizontal axis
+                var yScale3 = d3.scaleBand()
+                    .range([0, 300])
+                    .paddingInner(0.2)
+                    .paddingOuter(0.5);
+
+                var xAxis3 = d3.axisBottom()
+                    .ticks(10)
+                    .scale(xScale3);
+
+                var yAxis3 = d3.axisLeft()
+                    .scale(yScale3);
+                // Append x axis for this bar chart
+                svg3.append("g")
+                    .attr("class", "axis3")
+                    .attr("id", "x-axis3")
+                    .attr("transform", "translate(0," + (svg_height3 + 65) + ")")
+                    .call(xAxis3);
+                // Append y axis for this bar chart
+                svg3.append("g")
+                    .attr("class", "axis3")
+                    .attr("id", "y-axis3");
+                // Append title for this bar chart
+                svg3.append("text")
+                    .attr("x", 15)
+                    .attr("y", svg_height3 + 95)
+                    .style("font-size", "15px")
+                    .style("font-style", "italic")
+                    .text("BarChar2: number of countries per government");
+
+                // Define a fucntion to draw another bar chart
+                function generateBar2() {
+                    // Filter data by year
+                    var filtered_dataset = dataset.filter(yearFilter);
+                    // Filter data by government type and then get the number of countries in each goverment type by iteration
+                    var government_list = Object.keys(governments);
+                    for (var i = 0; i < government_list.length; i++) {
+                        countries_perGovernment[government_list[i]] = filtered_dataset.filter(function(d) {
+                            return d.Government == government_list[i]
+                        }).length;
+                    }
+                    // Update the domain of the y scale
+                    yScale3.domain(filtered_dataset.map(function(d) { return d.Government; }));
+                    // Call the y-axis3
+                    svg3.select("#y-axis3").call(yAxis3);
+
+                    /************ perform data join ************/
+                    var bars = svg3.selectAll('rect')
+                        .data(filtered_dataset, function key(d) {
+                            return d.Government;
+                        });
+
+                    /************ handle update selection ************/
+                    bars
+                        .transition()
+                        .duration(600)
+                        .ease(d3.easeBounce)
+                        .attr("x", 0)
+                        .attr("y", function(d) {
+                            return yScale3(d.Government);
+                        })
+                        .attr("height", yScale3.bandwidth())
+                        .attr("width", function(d) {
+                            return xScale3(countries_perGovernment[d.Government]);
+                        })
+                        .attr("fill", "Green");
+
+                    /************ handle enter selection ************/
+                    bars.enter()
+                        .append("rect")
+                        .attr("x", 0)
+                        .attr("y", function(d, i) {
+                            return yScale3(d.Government);
+                        })
+                        .attr("height", yScale3.bandwidth())
+                        .attr("width", function(d) {
+                            return xScale3(countries_perGovernment[d.Government]);
+                        })
+                        .attr("fill", "Green");
+
+                    /************ handle exit selection ************/
+                    bars.exit()
+                        .remove();
+                }
+                </script>
+            </div>
+        </div>
+    </div>
+    <div class="colorCountry" style="display: table;">
+        <div class="colorDis">
+            <font style="font-family: Fjalla One;"><i>Filter continents in your visualisation:</i></font>
+            &nbsp;&nbsp;&nbsp;
+            <button type="submit" value="ia" style="background-color:#FF4040; width: 25px; height: 25px;" onclick="continent(value)" ;>
+            </button> <b><i>Asia & Australia & Oceania</i></b> &nbsp;&nbsp;&nbsp;
+            <button type="submit" value="Europe" style="background-color:#FFEB3B; width: 25px; height: 25px;" onclick="continent(value)" ;>
+            </button> <b><i>Europe </i></b> &nbsp;&nbsp;&nbsp;
+            <button type="submit" value="Africa" style="background-color:#29B6F6; width: 25px; height: 25px;" onclick="continent(value)" ;>
+            </button> <b><i>Africa </i></b> &nbsp;&nbsp;&nbsp;
+            <button type="submit" value="America" style="background-color:#2ECC71;width: 25px; height: 25px;" onclick="continent(value)" ;>
+            </button> <b><i>North America & South America & Central America</i></b>
+        </div>
+    </div>
+    <div>
+        <button type="submit" class="control_button" onclick=start();>start</button>
+        <button type="submit" class="control_button" onclick=stop();>stop</button>
+        <button type="submit" class="control_button" onclick=reset();>reset</button>
+        <div class="slider">
+            <input type="range" id="sliderBarYear" value="1900" min="1900" max="2016" oninput="sliderWorks(this.value)" style="width: 650px" ;>
+        </div>
+    </div>
+</body>
+
+</html>
